@@ -1,0 +1,203 @@
+!===============================================================================
+!===============================================================================
+
+/CWD,     'E:/M2U example for CASSY/M2U/MIR_1/MECHANICAL/Post/STRESS_LIN'
+
+jobname = 'stress_linearisation'
+/FILNAME, '%jobname%',ON
+/OUTPUT,'%jobname%',TXT
+
+!===============================================================================
+!===============================================================================
+
+/PREP7
+
+    !===============================================================================
+	! Load model
+	!    
+	CDREAD,DB,'../../../_models/MIR','cdb',,'',''   
+	ALLSEL,ALL
+		
+FINISH
+
+/POST1	
+		
+	!===============================================================================
+	! Define and save nPath 
+	!
+	ALLSEL,ALL
+	NSLE,ALL
+
+	PADELE, ALL
+
+	nPath = 89    ! Number of paths to be defined
+	*DIM, pthName, CHAR, nPath
+	*DIM, pthData, ARRAY, 3, nPath
+
+    *DIM, nodeArray, ARRAY, nPath, 2
+    *VREAD, nodeArray(1,1), 'nodes','txt', ,JIK, 2, nPath
+(F7.0,1X,F7.0)
+
+	iPth = 0
+    *DO, i, 1, nPath
+	    iPth = iPth + 1 $ pthName(iPth) = '%iPth%' $ PthData(1, iPth) =  nodeArray(iPth,1),nodeArray(iPth,2), DISTND(nodeArray(iPth,1),nodeArray(iPth,2))
+    *ENDDO
+
+	nDiv = 30
+	nSets = 20
+	*DO, iPth, 1, nPath
+		PATH, PthName(iPth), 2, nSets, nDiv
+		PPATH, 1, PthData(1, iPth)
+		PPATH, 2, PthData(2, iPth)
+	*ENDDO
+
+	PASAVE, ALL, PATH, txt		! save path in "PATH.txt"
+
+	
+	! *DIM,temp_array,ARRAY,nPath  ! Read temperatures for paths
+	! *DO,iPth,1,nPath
+			! PATH, iPth		! Select path
+			! *GET,temp1,! Insert commands
+			! *GET,temp2,! Insert commands
+			! temp_array(i) = max(temp1,temp2)					
+	! *ENDDO
+	
+
+	!=======================================================================
+	!=======================================================================
+	! 
+	! Definition of Load Cases
+	! 
+	nLCs =  17
+	*DIM,LC_Key, CHAR,  nLCs			! Load Case Key (max 8 chars)
+	*DIM,LC_file,STRING, 80, nLCs		! Load Case file (max 8 chars)
+	*DIM,LC_fDir,STRING, 80, nLCs		! Load Case Folder (max 80 chars)
+	*DIM,LC_Set, ARRAY, nLCs			! Load Case Set
+	*DIM,SecData,ARRAY, nLCs,nSec, 6	! Section data (N, Tx, Ty, Mx, My, SP)
+
+	id = 0
+
+	!-----------------------------------------------------------------------
+	! Load Case 1 (replicate this chuck as needed)
+	! 
+	id = id + 1
+	LC_key(id)   = 'PRET'                                      ! Load Case Key (arbitrary name)
+	LC_file(1,id)   = 'LEVEL_A'                                ! Load Case filename (rst file)
+	LC_fDir(1,id)  = '../../../MECHANICAL/Run/LEVEL_A'         ! Load Case folder (location of rst file)
+	LC_Set (id)  = 1	                                       ! Load Case set
+	
+    !--------------------------------------
+    ! Write Header
+    !
+
+    *CFOPEN, './OUTPUT/DB_TOTAL', txt
+                
+    *VWRITE, 'path,','analy','sis,','loads','tep,','pathp','oint,','stress','_type,','Sx,','Sy,','Sz,','Sxy,','Sxz,','Syz,'
+(A5,A5,A4,A5,A4,A5,A5,A5,A6,A3,A3,A3,A4,A4,A4)
+
+    *CFCLOS
+
+    !--------------------------------------
+    ! Loop on different path
+    !
+    *DO,i,1,nPath
+
+        *DO, iLC, 1, NLCs
+
+            PathN 	='%i%'
+
+            !---------------------------------------------------------------
+            ! Select result file (.RST)
+            ! 
+            name   = LC_file(1,iLC)					! name of the result file
+            fdir   = LC_fDir(1,iLC)					! folder
+            iSet   = LC_Set(iLC)					! loadcase id
+            Load   = LC_Key(iLC)
+
+            FILE,name,rst,fDir					! select the result file
+            SET,iSet						! load results
+
+            !=============================================================================== 
+            ! Write DB_Load
+            !
+            PARESU, ALL, PATH, txt				! resume path from file
+
+            !===============================================================================
+            ! Select Path and linearized stress 
+            !
+            PATH, PathN     			! Select path			
+            PRSECT						! perform path stress linearization	
+
+            !===============================================================================
+            ! Get Path linearized stress 
+            !
+
+            !-----------------------------------------------
+            ! MEMBRANE
+            *GET, MX, 	SECTION, MEMBRANE, INSIDE, S, X
+            *GET, MY, 	SECTION, MEMBRANE, INSIDE, S, Y
+            *GET, MZ, 	SECTION, MEMBRANE, INSIDE, S, Z
+            *GET, MXY, 	SECTION, MEMBRANE, INSIDE, S, XY
+            *GET, MXZ, 	SECTION, MEMBRANE, INSIDE, S, XZ
+            *GET, MYZ, 	SECTION, MEMBRANE, INSIDE, S, YZ
+            !-----------------------------------------------
+            ! BENDING			
+            *GET, BX_I, 	SECTION, BENDING, INSIDE, S, X
+            *GET, BY_I, 	SECTION, BENDING, INSIDE, S, Y
+            *GET, BZ_I, 	SECTION, BENDING, INSIDE, S, Z
+            *GET, BXY_I, 	SECTION, BENDING, INSIDE, S, XY
+            *GET, BXZ_I, 	SECTION, BENDING, INSIDE, S, XZ
+            *GET, BYZ_I, 	SECTION, BENDING, INSIDE, S, YZ
+
+            *GET, BX_O, 	SECTION, BENDING, OUTSIDE, S, X
+            *GET, BY_O, 	SECTION, BENDING, OUTSIDE, S, Y
+            *GET, BZ_O, 	SECTION, BENDING, OUTSIDE, S, Z
+            *GET, BXY_O, 	SECTION, BENDING, OUTSIDE, S, XY
+            *GET, BXZ_O, 	SECTION, BENDING, OUTSIDE, S, XZ
+            *GET, BYZ_O, 	SECTION, BENDING, OUTSIDE, S, YZ
+            !-----------------------------------------------
+            ! PEAK			
+            *GET, FX_I, 	SECTION, PEAK, INSIDE, S, X
+            *GET, FY_I, 	SECTION, PEAK, INSIDE, S, Y
+            *GET, FZ_I, 	SECTION, PEAK, INSIDE, S, Z
+            *GET, FXY_I, 	SECTION, PEAK, INSIDE, S, XY
+            *GET, FXZ_I, 	SECTION, PEAK, INSIDE, S, XZ
+            *GET, FYZ_I, 	SECTION, PEAK, INSIDE, S, YZ
+
+            *GET, FX_O, 	SECTION, PEAK, OUTSIDE, S, X
+            *GET, FY_O, 	SECTION, PEAK, OUTSIDE, S, Y
+            *GET, FZ_O, 	SECTION, PEAK, OUTSIDE, S, Z
+            *GET, FXY_O, 	SECTION, PEAK, OUTSIDE, S, XY
+            *GET, FXZ_O, 	SECTION, PEAK, OUTSIDE, S, XZ
+            *GET, FYZ_O, 	SECTION, PEAK, OUTSIDE, S, YZ			
+
+            !===============================================================================
+            ! Write Path linearized stress onto file 
+            !
+
+            *CFOPEN, './OUTPUT/DB_TOTAL', txt, ,APPEND
+
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',begin',',Pm ,',MX,',',MY,',',MZ,',',MXY,',',MXZ,',',MYZ,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',begin',',Pb ,',BX_I,',',BY_I,',',BZ_I,',',BXY_I,',',BXZ_I,',',BYZ_I,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',begin',',F  ,',FX_I,',',FY_I,',',FZ_I,',',FXY_I,',',FXZ_I,',',FYZ_I,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+            
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',end',  ',Pm ,',MX,',',MY,',',MZ,',',MXY,',',MXZ,',',MYZ,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+                                
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',end',  ',Pb ,',BX_O,',',BY_O,',',BZ_O,',',BXY_O,',',BXZ_O,',',BYZ_O,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+                                
+            *VWRITE, '%PathN%,','%Load%,','%iSet%',',end',  ',F  ,',FX_O,',',FY_O,',',FZ_O,',',FXY_O,',',FXZ_O,',',FYZ_O,','
+(A8,A18,A2,A6,A6,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,E12.5,A1,)
+
+            *CFCLOS
+        *ENDDO
+    *ENDDO
+
+
+FINISH		
