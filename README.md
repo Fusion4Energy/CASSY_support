@@ -1,6 +1,18 @@
 # CASSY Support
 
-These scripts are used to extract inputs needed for CASSY assessments from FEM simulations.
+These scripts are used to extract inputs needed for CASSY assessments from FEM simulations. More info on CASSY [here](https://eng-gitlab.f4e.europa.eu/f4e-projects/cassy/-/wikis/home).
+
+Table of contents:
+
+- [Paths](#paths)
+    - [APDL](#apdl)
+    - [MECHANICAL](#mechanical)
+    - [ABAQUS](#abaqus)
+- [Bolts](#bolts)
+    - [APDL](#apdl-1)
+    - [MECHANICAL](#mechanical-1)
+    - [ABAQUS](#abaqus-1)
+
 
 ## Paths
 
