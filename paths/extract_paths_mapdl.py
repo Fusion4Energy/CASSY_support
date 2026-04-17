@@ -1,4 +1,5 @@
-from ansys.mapdl.core import launch_mapdl, Mapdl
+from ansys.mapdl.core import launch_mapdl
+from ansys.mapdl.core.mapdl_grpc import MapdlGrpc as Mapdl
 import pandas as pd
 from pathlib import Path
 import logging
@@ -10,19 +11,19 @@ import logging
 # Dictionary of analyses to process. Key is the name of the analysis (e.g. "Mech")
 # and value is the path to the .rst file for that analysis
 ANALYSES = {
-    "Mech": r"path/to/rstfile1",
-    "Analysis2": r"path/to/rstfile2",
+    "Analysis1": (r"path/to/file.rst", r"path/to/file.cdb"),
 }
-# path where to dump the final .csv file
-OUTFOLDER = r"path/to/output/folder"
+# path where to dump the final .csv file and APDL log
+OUTFOLDER = r"out"
 
 # define the nodes for each path {ID_path: (node1, node2)}
 PATH_NODES = {
-    1: (1001, 1002),
+    1: (4360324, 4358864),
+    2: (6645804, 6481684),
 }
 
 # number of path points
-NDIV = 21
+NDIV = 20
 
 # --------------------------
 # --- End of user inputs ---
@@ -37,6 +38,15 @@ def _count_loadsteps(mapdl_instance: Mapdl) -> int:
         if time.is_integer():
             counter += 1
     return counter
+
+
+def select_3D_elements_nodes(mapdl: Mapdl) -> None:
+    """Selects only 3D elements in a mechanical model and associated nodes"""
+    mapdl.esel("NONE")
+    for etype in [185, 186, 187]:
+        mapdl.esel("A", "ENAME", "", str(etype))
+    mapdl.nsle("S")
+    logging.info(f"Number of selected nodes: {mapdl.get('_', 'NODE', 0, 'COUNT')}")
 
 
 def extract_stress_linearization(
@@ -56,9 +66,7 @@ def extract_stress_linearization(
         stress_type, Sx, Sy, Sz, Sxy, Sxz, Syz
     """
     # Enter POST1 for postprocessing
-    mapdl.post1()
-    mapdl.allsel("ALL")
-    mapdl.nsle("ALL")
+    # mapdl.post1()
 
     # Delete existing paths
     mapdl.padele("ALL")
@@ -72,6 +80,8 @@ def extract_stress_linearization(
         mapdl.ppath(str(2), str(node2))
 
     nsets = _count_loadsteps(mapdl)
+    # select nodes
+    select_3D_elements_nodes(mapdl)
     # loop through all steps and paths
     dfs = []
     for step in range(1, nsets + 1):
@@ -79,6 +89,7 @@ def extract_stress_linearization(
         for path_id in PATH_NODES.keys():
             # extract the stress components
             mapdl.path(str(path_id))
+            mapdl.set(step)
             mapdl.prsect()
             df = _get_lin_stress_components(mapdl, step)
             df["path"] = path_id
@@ -88,8 +99,28 @@ def extract_stress_linearization(
     return pd.concat(dfs, ignore_index=True)
 
 
+def validate_mech_model(mapdl: Mapdl) -> None:
+    "Check if model is mechanical, if not, try to convert a thermal into a mech one"
+    SOLID_ETYPES = [185, 186, 187]
+    # get a list of the element types:
+    mapdl.allsel("ALL")
+    etypes = set(mapdl.mesh.etype)
+
+    found = False
+    for etype in SOLID_ETYPES:
+        if etype in etypes:
+            found = True
+            logging.info(".cdb recognized as a mech model")
+            break
+
+    if not found:
+        logging.warning("no mech elem type found, trying conversion using ETCHG,TTS")
+        mapdl.etchg("TTS")
+
+
 def _get_lin_stress_components(mapdl: Mapdl, step: int) -> pd.DataFrame:
-    mapdl.set(step)
+    """get the linearized stress components for the current path and load step.
+    and organize them into a DataFrame"""
     # Get stress components for MEMBRANE
     mx = mapdl.get("MX", "SECTION", "MEMBRANE", "INSIDE", "S", "X")
     my = mapdl.get("MY", "SECTION", "MEMBRANE", "INSIDE", "S", "Y")
@@ -146,16 +177,34 @@ def _get_lin_stress_components(mapdl: Mapdl, step: int) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
     # connect to MAPDL instance
     # launching and connecting to and ASNYS MAPDL instance
     print("Launching MAPDL...")
-    mapdl = launch_mapdl()
+    mapdl: Mapdl = launch_mapdl(
+        run_location=OUTFOLDER,
+        # loglevel="INFO",  # decomment in case of errors
+        override=True,
+    )
     print(mapdl)
 
     try:
         dfs = []
-        for analysis, rst_file in ANALYSES.items():
+        for analysis, (rst_file, cdb_file) in ANALYSES.items():
             logging.info(f"Processing analysis {analysis}...")
+            logging.info(f"Reading .cdb file {cdb_file}...")
+
+            mapdl.clear()
+            mapdl.prep7()
+            mapdl.cdread("DB", cdb_file)
+            validate_mech_model(mapdl)
+
+            mapdl.finish()
+
+            logging.info(f"Extracting data from {rst_file}...")
+
+            mapdl.post1()
             mapdl.file(rst_file)
             df = extract_stress_linearization(mapdl)
             df["analysis"] = analysis
