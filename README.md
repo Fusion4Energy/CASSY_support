@@ -31,7 +31,13 @@ root
 The file ``model.csv`` is expected to contain the linearized stress tensors at different paths and timesteps to be later used in CASSY. The following scripts help bridging FEM simulations with this kind of input format.
 
 ### APDL
-An [APDL macro](/paths/SCLs_CASSY.mac) is available to extract linearized stresses in CASSY format. TODO: Improve documentation of the macro, original author: Emilio Garcia.
+An [APDL macro](/paths/SCLs_CASSY.mac) is available to extract linearized stresses in CASSY format.
+The logic of such macro has been ported to a [python script](/paths/extract_paths_mapdl.py) for an easier and more general use. In order to use the python script, ``pandas`` and ``ansys-mapdl-core`` python package need to be installed. The following inputs are expected from the user:
+
+- **ANALYSES**: a dictionary where the key are the name of the analysis (i.e., the same that will be used in CASSY config file) and the values are tuple that for each analysis provide a path to the correspondent .rst file and .cdb file
+- **OUTFOLDER**: path to where to dump the final .csv file (CASSY input of linearized stresses) and APDL log.
+- **PATH_NODES**: dictionary listing the IDs of inside and outside node for each path to be extracted.
+- **NDIV**: number of division points to be used in the paths creation.
 
 ### MECHANICAL
 
