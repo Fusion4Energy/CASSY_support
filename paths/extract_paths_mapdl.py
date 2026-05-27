@@ -62,7 +62,7 @@ def extract_stress_linearization(
     Returns
     -------
     pd.DataFrame
-        DataFrame containing the extracted data, with columns: path, loadstep, path_point,
+        DataFrame containing the extracted data, with columns: path, loadstep, pathpoint,
         stress_type, Sx, Sy, Sz, Sxy, Sxz, Syz
     """
     # Enter POST1 for postprocessing
@@ -162,17 +162,17 @@ def _get_lin_stress_components(mapdl: Mapdl, step: int) -> pd.DataFrame:
     fyz_o = mapdl.get("FYZ_O", "SECTION", "PEAK", "OUTSIDE", "S", "YZ")
 
     data = [
-        [1, "Pm", mx, my, mz, mxy, mxz, myz],
-        [2, "Pm", mx, my, mz, mxy, mxz, myz],
-        [1, "Pb", bx_i, by_i, bz_i, bxy_i, bxz_i, byz_i],
-        [2, "Pb", bx_o, by_o, bz_o, bxy_o, bxz_o, byz_o],
-        [1, "F", fx_i, fy_i, fz_i, fxy_i, fxz_i, fyz_i],
-        [2, "F", fx_o, fy_o, fz_o, fxy_o, fxz_o, fyz_o],
+        ["begin", "Pm", mx, my, mz, mxy, mxz, myz],
+        ["end", "Pm", mx, my, mz, mxy, mxz, myz],
+        ["begin", "Pb", bx_i, by_i, bz_i, bxy_i, bxz_i, byz_i],
+        ["end", "Pb", bx_o, by_o, bz_o, bxy_o, bxz_o, byz_o],
+        ["begin", "F", fx_i, fy_i, fz_i, fxy_i, fxz_i, fyz_i],
+        ["end", "F", fx_o, fy_o, fz_o, fxy_o, fxz_o, fyz_o],
     ]
 
     return pd.DataFrame(
         data,
-        columns=["path_point", "stress_type", "Sx", "Sy", "Sz", "Sxy", "Sxz", "Syz"],
+        columns=["pathpoint", "stress_type", "Sx", "Sy", "Sz", "Sxy", "Sxz", "Syz"],
     )
 
 
