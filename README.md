@@ -1,6 +1,6 @@
 # CASSY Support
 
-These scripts are used to extract inputs needed for CASSY assessments from FEM simulations. More info on CASSY [here](https://eng-gitlab.f4e.europa.eu/f4e-projects/cassy/-/wikis/home).
+These scripts are used to extract inputs needed for CASSY assessments from FEM simulations. More info on CASSY [here](https://github.com/Fusion4Energy/CASSY).
 
 Table of contents:
 
@@ -16,19 +16,7 @@ Table of contents:
 
 ## Paths
 
-The typical CASSY format folderpath for a path assessment is:
-
-```
-root
-│           
-├───config
-│       model.xlsx
-│                  
-└───stresses
-        model.csv
-```
-
-The file ``model.csv`` is expected to contain the linearized stress tensors at different paths and timesteps to be later used in CASSY. The following scripts help bridging FEM simulations with this kind of input format.
+In CASSY, for each submodel, a csv file is expected to contain the linearized stress tensors at different paths and timesteps. The following scripts help bridging FEM simulations with this kind of input format.
 
 ### APDL
 An [APDL macro](/paths/SCLs_CASSY.mac) is available to extract linearized stresses in CASSY format.
@@ -77,26 +65,6 @@ This script can be executed from any python environment that has ``pandas`` inst
 TODO
 
 ## Bolts
-The default CASSY folder structure for bolts assessment is:
-
-```
-root.     
-├───actions
-│       main_bolts.csv
-│          
-├───config
-│       main_bolts.xlsx
-│       
-├───geometries
-│       M12_bolt.xlsx
-│       M12_insert.xlsx
-│       M3_bolt.xlsx
-│       M3_insert.xlsx
-│       M5_bolt.xlsx
-│       M5_insert.xlsx
-│       M8_bolt.xlsx
-│       M8_insert.xlsx
-```
 
 ### APDL
 TODO
@@ -128,6 +96,7 @@ following format:
 For each analysis, rename the csv file as Bolt Reactions.csv and organize them in the following
 folder structure in root/actions folder:
 
+```
 root.     
 ├───actions
 │   │   
@@ -152,6 +121,7 @@ root.
 │       M5_insert.xlsx
 │       M8_bolt.xlsx
 │       M8_insert.xlsx
+```
 
 Now, the script [mechanical_to_cassy_bolts_format.py](/bolts/mechanical_to_cassy_bolts_format.py) will create a proper main_bolts.csv
 file in CASSY format, in the actions folder. First, ensure you set your config file name
